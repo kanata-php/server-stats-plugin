@@ -2,7 +2,11 @@
 
 namespace ServerStats\Services;
 
+use Psr\Container\ContainerExceptionInterface;
+use Psr\Container\NotFoundExceptionInterface;
 use ServerStats as MainServerStats;
+use Swoole\Http\Server;
+use Swoole\WebSocket\Server as WebSocketServer;
 
 class ServerStats
 {
@@ -29,11 +33,18 @@ class ServerStats
      *
      * Updates
      * - 16/06/2022: Replace ${var} with {$var} for forward PHP 8.2 compat
+     *
+     * @param Server|WebSocketServer $service
+     * @param string $service
+     * @param array $labels
+     * @return string
+     * @throws ContainerExceptionInterface
+     * @throws NotFoundExceptionInterface
      */
-
-    public static function getMetrics(string $service = 'openswoole', array $labels = []): string
+    public static function getMetrics(Server|WebSocketServer $server, string $service = 'openswoole', array $labels = []): string
     {
-        $server = container()->get('http-server');
+        $table = container()->get(MainServerStats::METRICS_SKIP_TABLE);
+        $metrics_request_count = $table->get('metrics', 'counter');
 
         $stats = $server->stats();
         $labels['service'] = strtolower($service);
@@ -44,7 +55,7 @@ class ServerStats
         }
 
         $labels = implode(',', $labels);
-        $cpu_total = 0.0;
+        // $cpu_total = 0.0;
 
         $event_workers = [];
         $event_workers[] = "# TYPE openswoole_event_workers_start_time gauge";
@@ -59,18 +70,26 @@ class ServerStats
 
         $event_workers[] = "# TYPE openswoole_event_workers_dispatch_count gauge";
         foreach ($stats['event_workers'] as $stat) {
+            $w_metrics_request_count = $table->get('metrics-' . $stat['worker_id'], 'counter');
+            $stat['dispatch_count'] = (int) $stat['dispatch_count'] - (int) $w_metrics_request_count;
+            $stat['dispatch_count'] = $stat['dispatch_count'] < 0 ? 0 : $stat['dispatch_count'];
+
             $event_workers[] = "openswoole_event_workers_dispatch_count{{$labels},worker_id=\"{$stat['worker_id']}\"} {$stat['dispatch_count']}";
         }
 
         $event_workers[] = "# TYPE openswoole_event_workers_request_count gauge";
         foreach ($stats['event_workers'] as $stat) {
+            $w_metrics_request_count = $table->get('metrics-' . $stat['worker_id'], 'counter');
+            $stat['request_count'] = (int) $stat['request_count'] - (int) $w_metrics_request_count;
+            $stat['request_count'] = $stat['request_count'] < 0 ? 0 : $stat['request_count'];
+
             $event_workers[] = "openswoole_event_workers_request_count{{$labels},worker_id=\"{$stat['worker_id']}\"} {$stat['request_count']}";
         }
 
         $event_workers[] = "# TYPE openswoole_event_workers_cpu gauge";
         foreach ($stats['event_workers'] as $stat) {
             $pid = $stat['pid'];
-            $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
+            // $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
             $event_workers[] = "openswoole_event_workers_cpu_average{{$labels},worker_id=\"{$stat['worker_id']}\"} {$cpu}";
 
         }
@@ -88,8 +107,8 @@ class ServerStats
 
         $event_workers[] = "# TYPE openswoole_task_workers_cpu gauge";
         foreach ($stats['task_workers'] as $stat) {
-            $pid = $stat['pid'];
-            $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
+            // $pid = $stat['pid'];
+            // $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
             $event_workers[] = "openswoole_task_workers_cpu_average{{$labels},worker_id=\"{$stat['worker_id']}\"} {$cpu}";
         }
 
@@ -106,8 +125,8 @@ class ServerStats
 
         $event_workers[] = "# TYPE openswoole_user_workers_cpu gauge";
         foreach ($stats['user_workers'] as $stat) {
-            $pid = $stat['pid'];
-            $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
+            // $pid = $stat['pid'];
+            // $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
             $event_workers[] = "openswoole_user_workers_cpu_average{{$labels},worker_id=\"{$stat['worker_id']}\"} {$cpu}";
         }
 
@@ -118,16 +137,21 @@ class ServerStats
             $classes[] = "openswoole_top_classes_total{{$labels},class_name=\"{$name}\"} {$value}";
         }
 
-        $pid = $server->getMasterPid();
-        $cpu_total += (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
+        // $pid = $server->getMasterPid();
+        // $cpu_total += (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
 
-        $pid = $server->getManagerPid();
-        $cpu_total += (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
+        // $pid = $server->getManagerPid();
+        // $cpu_total += (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
 
-        $table = container()->get(MainServerStats::METRICS_SKIP_TABLE);
-        $metrics_request_count = $table->get('metrics', 'counter');
-        $requests_total = (int) $stats['requests_total'] - (int) $metrics_request_count;
-        $requests_total = $requests_total < 0 ? 0 : $requests_total;
+        // BEGIN: adjust requests total
+
+        $stats['requests_total'] = (int) $stats['requests_total'] - (int) $metrics_request_count;
+        $stats['requests_total'] = $stats['requests_total'] < 0 ? 0 : $stats['requests_total'];
+
+        $stats['connections_accepted'] = (int) $stats['connections_accepted'] - (int) $metrics_request_count;
+        $stats['connections_accepted'] = $stats['connections_accepted'] < 0 ? 0 : $stats['connections_accepted'];
+
+        // END: adjust requests total
 
         $metrics = [
             "# TYPE openswoole_info gauge",
@@ -137,7 +161,7 @@ class ServerStats
             "# TYPE openswoole_reactor_num gauge",
             "openswoole_reactor_threads_num{{$labels}} {$stats['reactor_threads_num']}",
             "# TYPE openswoole_requests counter",
-            "openswoole_requests_total{{$labels}} {$requests_total}",
+            "openswoole_requests_total{{$labels}} {$stats['requests_total']}",
             "# TYPE openswoole_start_time gauge",
             "openswoole_start_time{{$labels}} {$stats['start_time']}",
             "# TYPE openswoole_max_conn gauge",
@@ -174,8 +198,8 @@ class ServerStats
             "openswoole_worker_vm_resource_num{{$labels}} {$stats['worker_vm_resource_num']}",
             "# TYPE openswoole_worker_memory_usage gauge",
             "openswoole_worker_memory_usage{{$labels}} {$stats['worker_memory_usage']}",
-            "# TYPE openswoole_cpu_average gauge",
-            "openswoole_cpu_average{{$labels}} {$cpu_total}",
+            // "# TYPE openswoole_cpu_average gauge",
+            // "openswoole_cpu_average{{$labels}} {$cpu_total}",
         ];
 
         $metrics = array_merge($metrics, $event_workers, $task_workers, $user_workers, $classes);
