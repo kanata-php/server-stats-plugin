@@ -71,11 +71,9 @@ class ServerStats implements KanataPluginInterface
         add_filter('routes', function($app) {
             if (is_websocket_execution()) {
                 $app->get('/', function(Request $request, Response $response) {
-                    $content = container()->get('view')->render('stats::ws-error', [
+                    return view($response, 'stats::ws-error', [
                         'content' => 'Nothing here.',
                     ]);
-                    $response->getBody()->write($content);
-                    return $response->withStatus(200);
                 })->setName('home');
             }
 
