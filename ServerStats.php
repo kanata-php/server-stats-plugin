@@ -8,7 +8,7 @@ use Kanata\Annotations\Author;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Swoole\Table;
-use WsServerStats\Services\ServerStats as ServerStatsService;
+use ServerStats\Services\ServerStats as ServerStatsService;
 
 /**
  * @Plugin(name="ServerStats")

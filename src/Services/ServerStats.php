@@ -1,8 +1,8 @@
 <?php
 
-namespace WsServerStats\Services;
+namespace ServerStats\Services;
 
-use WsServerStats;
+use ServerStats as MainServerStats;
 
 class ServerStats
 {
@@ -124,7 +124,7 @@ class ServerStats
         $pid = $server->getManagerPid();
         $cpu_total += (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
 
-        $table = container()->get(WsServerStats::METRICS_SKIP_TABLE);
+        $table = container()->get(MainServerStats::METRICS_SKIP_TABLE);
         $metrics_request_count = $table->get('metrics', 'counter');
         $requests_total = (int) $stats['requests_total'] - (int) $metrics_request_count;
         $requests_total = $requests_total < 0 ? 0 : $requests_total;
