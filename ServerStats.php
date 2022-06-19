@@ -1,7 +1,6 @@
 <?php
 
 use Kanata\Interfaces\KanataPluginInterface;
-use League\Plates\Engine;
 use Psr\Container\ContainerInterface;
 use Kanata\Annotations\Plugin;
 use Kanata\Annotations\Description;
