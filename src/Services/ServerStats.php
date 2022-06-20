@@ -86,13 +86,12 @@ class ServerStats
             $event_workers[] = "openswoole_event_workers_request_count{{$labels},worker_id=\"{$stat['worker_id']}\"} {$stat['request_count']}";
         }
 
-        $event_workers[] = "# TYPE openswoole_event_workers_cpu gauge";
-        foreach ($stats['event_workers'] as $stat) {
-            $pid = $stat['pid'];
-            // $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
-            $event_workers[] = "openswoole_event_workers_cpu_average{{$labels},worker_id=\"{$stat['worker_id']}\"} {$cpu}";
-
-        }
+        // $event_workers[] = "# TYPE openswoole_event_workers_cpu gauge";
+        // foreach ($stats['event_workers'] as $stat) {
+        //     $pid = $stat['pid'];
+        //     $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
+        //     $event_workers[] = "openswoole_event_workers_cpu_average{{$labels},worker_id=\"{$stat['worker_id']}\"} {$cpu}";
+        // }
 
         $task_workers = [];
         $task_workers[] = "# TYPE openswoole_task_workers_start_time gauge";
@@ -105,12 +104,12 @@ class ServerStats
             $task_workers[] = "openswoole_task_workers_start_seconds{{$labels},worker_id=\"{$stat['worker_id']}\"} {$stat['start_seconds']}";
         }
 
-        $event_workers[] = "# TYPE openswoole_task_workers_cpu gauge";
-        foreach ($stats['task_workers'] as $stat) {
-            // $pid = $stat['pid'];
-            // $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
-            $event_workers[] = "openswoole_task_workers_cpu_average{{$labels},worker_id=\"{$stat['worker_id']}\"} {$cpu}";
-        }
+        // $event_workers[] = "# TYPE openswoole_task_workers_cpu gauge";
+        // foreach ($stats['task_workers'] as $stat) {
+        //     $pid = $stat['pid'];
+        //     $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
+        //     $event_workers[] = "openswoole_task_workers_cpu_average{{$labels},worker_id=\"{$stat['worker_id']}\"} {$cpu}";
+        // }
 
         $user_workers = [];
         $user_workers[] = "# TYPE openswoole_user_workers_start_time gauge";
@@ -123,12 +122,12 @@ class ServerStats
             $user_workers[] = "openswoole_user_workers_start_seconds{{$labels},worker_id=\"{$stat['worker_id']}\"} {$stat['start_seconds']}";
         }
 
-        $event_workers[] = "# TYPE openswoole_user_workers_cpu gauge";
-        foreach ($stats['user_workers'] as $stat) {
-            // $pid = $stat['pid'];
-            // $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
-            $event_workers[] = "openswoole_user_workers_cpu_average{{$labels},worker_id=\"{$stat['worker_id']}\"} {$cpu}";
-        }
+        // $event_workers[] = "# TYPE openswoole_user_workers_cpu gauge";
+        // foreach ($stats['user_workers'] as $stat) {
+        //     $pid = $stat['pid'];
+        //     $cpu_total +=  $cpu = (float) trim(shell_exec("ps -p $pid -o %cpu | tail -n +2"));
+        //     $event_workers[] = "openswoole_user_workers_cpu_average{{$labels},worker_id=\"{$stat['worker_id']}\"} {$cpu}";
+        // }
 
         $classes = [];
         $classes[] = "# TYPE openswoole_top_classes_total counter";

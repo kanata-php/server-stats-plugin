@@ -7,9 +7,8 @@ use Kanata\Annotations\Description;
 use Kanata\Annotations\Author;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
-use Swoole\Http\Server;
+use ServerStats\Http\Controllers\ServerStatsController;
 use Swoole\Table;
-use ServerStats\Services\ServerStats as ServerStatsService;
 
 /**
  * @Plugin(name="ServerStats")
@@ -77,19 +76,14 @@ class ServerStats implements KanataPluginInterface
                 })->setName('home');
             }
 
-            $app->get(config('server-stats.endpoint'), function(Request $request, Response $response) {
-                /** @var Server $server */
-                $server = container()->get('server');
+            $metricsRoute = $app->get(config('server-stats.endpoint'), [ServerStatsController::class, 'metrics'])->setName('metrics');
+            if (
+                is_plugin_active('user-authorization')
+                && config('server-stats.secure-metrics-jwt')
+            ) {
+                $metricsRoute->add(new \UserAuthorization\Http\Middlewares\JwtAuthMiddleware);
+            }
 
-                /** @var Table $table */
-                $table = container()->get(self::METRICS_SKIP_TABLE);
-                $table->incr('metrics', 'counter');
-                $table->incr('metrics-' . $server->worker_id, 'counter');
-
-                $httpServerStats = ServerStatsService::getMetrics($server);
-                $response->getBody()->write($httpServerStats);
-                return $response;
-            })->setName('metrics');
             return $app;
         });
     }
