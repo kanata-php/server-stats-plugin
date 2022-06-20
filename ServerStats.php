@@ -37,7 +37,7 @@ class ServerStats implements KanataPluginInterface
     {
         if (is_websocket_execution()) {
             $this->register_views();
-            add_filter('error_template', fn($t) => 'stats:ws-error');
+            add_filter('error_template', fn($t) => 'stats::ws-error');
         }
 
         if (is_http_execution() || is_websocket_execution()) {
