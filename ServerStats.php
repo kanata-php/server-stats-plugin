@@ -41,7 +41,7 @@ class ServerStats implements KanataPluginInterface
 
         if (is_http_execution() || is_websocket_execution()) {
             $this->register_requests_counter_table();
-            $this->register_metrics_endpoint();
+            $this->register_metrics_endpoints();
         }
     }
 
@@ -65,9 +65,11 @@ class ServerStats implements KanataPluginInterface
      * @throws \Psr\Container\ContainerExceptionInterface
      * @throws \Psr\Container\NotFoundExceptionInterface
      */
-    private function register_metrics_endpoint()
+    private function register_metrics_endpoints()
     {
         add_filter('routes', function($app) {
+
+            // here we cancel any request to home
             if (is_websocket_execution()) {
                 $app->get('/', function(Request $request, Response $response) {
                     return view($response, 'stats::ws-error', [
@@ -76,12 +78,28 @@ class ServerStats implements KanataPluginInterface
                 })->setName('home');
             }
 
+            // --------------------------------------------------------------
+            // metrics
+            // --------------------------------------------------------------
+
             $metricsRoute = $app->get(config('server-stats.endpoint'), [ServerStatsController::class, 'metrics'])->setName('metrics');
             if (
                 is_plugin_active('user-authorization')
                 && config('server-stats.secure-metrics-jwt')
             ) {
                 $metricsRoute->add(new \UserAuthorization\Http\Middlewares\JwtAuthMiddleware);
+            }
+
+            // --------------------------------------------------------------
+            // logs
+            // --------------------------------------------------------------
+
+            $logsRoute = $app->get(config('server-stats.logs-endpoint'), [ServerStatsController::class, 'logs'])->setName('logs');
+            if (
+                is_plugin_active('user-authorization')
+                && config('server-stats.secure-logs-jwt')
+            ) {
+                $logsRoute->add(new \UserAuthorization\Http\Middlewares\JwtAuthMiddleware);
             }
 
             return $app;
